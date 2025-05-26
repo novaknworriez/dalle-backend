@@ -9,6 +9,8 @@ from openai import OpenAI  # ✅ Use the OpenAI client class
 # ✅ Initialize OpenAI client with your key
 import os
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+print("🔍 API Key found:", "Yes" if os.getenv("OPENAI_API_KEY") else "No")
+
 
 
 
