@@ -90,11 +90,18 @@ def generate_image():
             quality="standard",
             n=1
         )
+
         image_url = response.data[0].url
+        print("✅ Image generated:", image_url)
         return jsonify({"prompt": prompt, "image_url": image_url})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("❌ Error during generation:", str(e))  # Log for Render logs
+        return jsonify({
+            "error": str(e),
+            "prompt": prompt
+        }), 500
+
 
 # 🚀 Start the Flask server
 if __name__ == "__main__":
