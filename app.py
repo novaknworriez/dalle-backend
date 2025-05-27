@@ -1,13 +1,16 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file
 from flask_cors import CORS
-app = Flask(__name__)
-CORS(app)  # 👈 enable CORS for all routes
-
 import random
-from openai import OpenAI  # ✅ Use the OpenAI client class
-
-# ✅ Initialize OpenAI client with your key
+import requests
 import os
+import base64
+from io import BytesIO
+from openai import OpenAI
+
+app = Flask(__name__)
+CORS(app)
+
+# ✅ Load OpenAI API key from environment and confirm
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 print("🔍 API Key found:", "Yes" if os.getenv("OPENAI_API_KEY") else "No")
 
@@ -71,39 +74,48 @@ PROMPT_PARTS = {
 
 
 def generate_prompt():
-    style = random.choice(PROMPT_PARTS["style"])
-    subject = random.choice(PROMPT_PARTS["subject"])
-    setting = random.choice(PROMPT_PARTS["setting"])
-    return f"A {style} image of a {subject} {setting}."
+    return "A {} image of a {} {}.".format(
+        random.choice(PROMPT_PARTS["style"]),
+        random.choice(PROMPT_PARTS["subject"]),
+        random.choice(PROMPT_PARTS["setting"])
+    )
 
-# 🎨 Image generation endpoint
 @app.route("/generate", methods=["GET"])
 def generate_image():
-    prompt = generate_prompt()
-    print("Prompt being sent to OpenAI:", prompt)
-
     try:
+        prompt = generate_prompt()
+        print("🧠 Generating image for:", prompt)
+
+        # 🧠 Call OpenAI DALL·E API using new SDK client
         response = client.images.generate(
             model="dall-e-3",
             prompt=prompt,
+            n=1,
             size="1024x1024",
             quality="standard",
-            n=1
+            response_format="b64_json"
         )
 
-        image_url = response.data[0].url
-        print("✅ Image generated:", image_url)
-        return jsonify({"prompt": prompt, "image_url": image_url})
+        image_b64 = response.data[0].b64_json
 
-    except Exception as e:
-        print("❌ Error during generation:", str(e))  # Log for Render logs
+        # 💾 Save to a temp file
+        image_bytes = BytesIO(base64.b64decode(image_b64))
+        temp_path = "temp_image.png"
+        with open(temp_path, "wb") as f:
+            f.write(image_bytes.getvalue())
+
         return jsonify({
-            "error": str(e),
+            "image_url": "/image",
             "prompt": prompt
-        }), 500
+        })
+    except Exception as e:
+        print("❌ Error:", e)
+        return jsonify({"error": str(e)}), 500
 
+@app.route("/image", methods=["GET"])
+def serve_image():
+    return send_file("temp_image.png", mimetype="image/png")
 
-# 🚀 Start the Flask server
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0')
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
 
