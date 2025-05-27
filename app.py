@@ -93,28 +93,19 @@ def generate_image():
             n=1,
             size="1024x1024",
             quality="standard",
-            response_format="b64_json"
+            response_format="url"  # <- returns hosted image URL
         )
 
-        image_b64 = response.data[0].b64_json
-
-        # 💾 Save to a temp file
-        image_bytes = BytesIO(base64.b64decode(image_b64))
-        temp_path = "temp_image.png"
-        with open(temp_path, "wb") as f:
-            f.write(image_bytes.getvalue())
+        image_url = response.data[0].url
 
         return jsonify({
-            "image_url": "/image",
+            "image_url": image_url,
             "prompt": prompt
         })
+
     except Exception as e:
         print("❌ Error:", e)
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/image", methods=["GET"])
-def serve_image():
-    return send_file("temp_image.png", mimetype="image/png")
+        return jsonify({"error": str(e)}), 500,
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
